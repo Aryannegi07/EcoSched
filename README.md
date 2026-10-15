@@ -1,214 +1,223 @@
-# EcoSched — Smart E-Waste Collection and Scheduling System
+# EcoSched - Smart E-Waste Management and Collection Scheduling System
 
-EcoSched is a college PBL project that combines **Operating Systems concepts, DBMS, and full-stack web development** to manage e-waste collection requests.
+**Team SysCore** | Team leader: Aryan Negi
+College PBL project combining **Operating Systems**, **DBMS** and **Web Development**.
 
-The project has seven main functions:
-
-1. **User Registration** — register users with contact and address details.
-2. **E-Waste Registration** — record electronic items, their condition, category, and weight.
-3. **Pickup Request Creation** — create pickup requests for registered e-waste.
-4. **Admin Dashboard** — view users, e-waste, pickup requests, teams, and summary statistics.
-5. **Priority Scheduling** — a C implementation of non-preemptive priority scheduling.
-6. **Collection-Team Allocation** — assign pending requests to available collection teams.
-7. **Request Tracking and Completion** — track request status and release a team when work is completed.
-
-## Technology stack
-
-- **Frontend:** React, Vite, JavaScript, CSS
-- **Backend:** Java 17+, Spring Boot, Maven, Spring Data JPA
-- **Database:** MySQL
-- **OS concept:** C-based non-preemptive priority scheduler
-- **Development tools:** MySQL Workbench, VS Code, GCC
-
-## How the system works
-
-```text
-React frontend
-      |
-      v
-Spring Boot REST API
-      |
-      +------ MySQL database
-      |
-      +------ C priority scheduler
-                   |
-                   v
-        Selects the highest-priority
-        pending request for an available team
+```
+React  ->  Spring Boot  ->  MySQL
+              |
+              +-> C Priority Scheduler  (decides; result written back to MySQL)
 ```
 
-The scheduler treats pickup requests as tasks and collection teams as limited resources. A higher numeric priority is selected first. If priorities are equal, the earlier request time wins; request ID provides a deterministic final tie-breaker. Scheduling is non-preemptive: an active pickup is not interrupted by a newly arrived request.
+## Project status (about 45 % of Phase 1, verified part)
 
-Typical request statuses are `PENDING`, `ASSIGNED`, `IN_PROGRESS`, and `COMPLETED`. The backend also defines `CANCELLED` for cancellation handling.
+| Part | Status |
+|------|--------|
+| MySQL schema, seed, queries, procedures | Verified on MySQL 8.0.46 (`database/test_db.sh` 37/37) |
+| C priority scheduler (non-preemptive) | Verified (`make test`: 40 unit + 13 CLI tests) |
+| OS <-> DBMS workflow (C binary + MySQL) | Verified (`workflow_test.py` 32/32, `scenario_test.py` 55/55) |
+| React frontend | `npm run build` OK; API paths match the controllers |
+| Spring Boot backend | **Written but NOT yet built/run in the test environment** (Maven Central was blocked). Run `mvn clean package` on your machine - see `docs/TESTING.md` section 6 |
 
-## Project structure
+Real test output is in `docs/test-results/`.
 
-```text
-EcoSched/
-├── backend/       Spring Boot REST API
-├── database/      MySQL schema, seed data, and SQL scripts
-├── docs/          API, testing, and project documentation
-├── frontend/      React + Vite user interface
-├── scheduler/     C scheduler, CLI, and tests
-├── .env.example   Template for local environment configuration
-└── README.md
+## Requirements
+
+- JDK 17 or newer (`java -version`)
+- Maven 3.9+ (`mvn -v`)
+- MySQL 8.0.16+ (CHECK constraints) and MySQL Workbench
+- `gcc` and `make` (Windows: MinGW or WSL)
+- Node.js 18+ and npm
+- Python 3 + `pip install pymysql` (only for the database scenario tests)
+- No PostgreSQL, pgAdmin or MongoDB is used.
+
+---
+
+## MYSQL SETUP
+
+Run from the project root (`EcoSched/`). `SOURCE` works in every shell, including Windows PowerShell.
+
+```bash
+mysql -u root -p
 ```
-
-## Prerequisites
-
-Install these tools before running the project:
-
-- JDK 17 or newer
-- Maven
-- MySQL 8.x and MySQL Workbench
-- Node.js and npm
-- GCC (MinGW on Windows is fine)
-
-`make` is optional on Windows. If it is unavailable, compile the C scheduler directly with GCC as shown below.
-
-## 1. Configure the database
-
-Start MySQL, then open MySQL Workbench or a MySQL shell. From the project root, run the SQL scripts in this order:
-
 ```sql
 SOURCE database/schema.sql;
 SOURCE database/seed.sql;
-```
+SOURCE database/procedures.sql;   -- optional
 
-Run `database/procedures.sql` as well if you need the stored procedures.
-
-**Warning:** `schema.sql` drops and recreates the project tables. Do not run it against data you need to keep. `seed.sql` inserts sample records and normally should not be run repeatedly without resetting the database.
-
-Create a dedicated database user if you have not already done so:
-
-```sql
-CREATE USER 'ecosched_user'@'localhost' IDENTIFIED BY 'REPLACE_WITH_YOUR_OWN_PASSWORD';
+CREATE USER 'ecosched_user'@'localhost' IDENTIFIED BY 'PUT_A_STRONG_PASSWORD_HERE';
 GRANT SELECT, INSERT, UPDATE, DELETE ON ecosched.* TO 'ecosched_user'@'localhost';
 FLUSH PRIVILEGES;
+EXIT;
 ```
 
-If the user already exists, update its password or reuse the existing account instead of running `CREATE USER` again.
+- `schema.sql` **drops and recreates** the tables: running it again resets your data. Run `seed.sql` right after it (a second seed run fails with a duplicate-key error).
+- Check: `mysql -u ecosched_user -p ecosched -e "SELECT COUNT(*) FROM users;"` -> 5 users, 8 e-waste items, 4 teams, 8 requests (4 pending).
+- Check: `SELECT * FROM v_integrity_violations;` must return 0 rows.
+- You can also open the `.sql` files in MySQL Workbench and run them.
 
-## 2. Configure environment variables
+## BACKEND SETUP
 
-In PowerShell, from the project root:
+1. Create the settings file (never commit it; it is git-ignored):
+   ```bash
+   cp .env.example .env        # Windows: copy .env.example .env
+   ```
+2. Edit `.env` and set `DB_PASSWORD` to the password you chose in MYSQL SETUP (no quotes).
+   The backend refuses to start without it. Real environment variables override `.env`.
+3. Build:
+   ```bash
+   cd backend
+   mvn clean package
+   ```
+   Expected: `BUILD SUCCESS`. Needs internet the first time (Maven downloads Spring Boot).
 
-```powershell
-Copy-Item .env.example .env
-notepad .env
-```
+`.env.example` contains only placeholders - it holds no real password.
 
-Set the values for your local MySQL account. Example:
+## FRONTEND SETUP
 
-```dotenv
-DB_HOST=localhost
-DB_PORT=3306
-DB_NAME=ecosched
-DB_USERNAME=ecosched_user
-DB_PASSWORD=REPLACE_WITH_YOUR_OWN_PASSWORD
-
-SERVER_PORT=8081
-CORS_ALLOWED_ORIGINS=http://localhost:3000,http://127.0.0.1:3000
-JPA_SHOW_SQL=false
-
-SCHEDULER_BIN=D:\EcoSched\scheduler\ecosched_scheduler.exe
-SCHEDULER_TIMEOUT_SECONDS=10
-```
-
-Use the actual path where you extracted the project. The `SCHEDULER_BIN` line should point to the compiled scheduler executable. Keep `.env` private; it must not be committed to GitHub.
-
-## 3. Build the C scheduler
-
-Open PowerShell:
-
-```powershell
-cd D:\EcoSched\scheduler
-gcc -std=c11 -O2 -Wall -Wextra scheduler_cli.c priority_scheduler.c -o ecosched_scheduler.exe
-```
-
-Verify the executable:
-
-```powershell
-Test-Path .\ecosched_scheduler.exe
-```
-
-Expected result: `True`.
-
-If `make` is installed, the project's `Makefile` can also be used. GCC is sufficient to compile the executable directly on Windows.
-
-## 4. Start the backend
-
-Open a new terminal:
-
-```powershell
-cd D:\EcoSched\backend
-mvn spring-boot:run
-```
-
-The backend port is configured by `SERVER_PORT` in the root `.env`. With the example above, the API base URL is:
-
-`http://localhost:8081/api`
-
-Keep this terminal running.
-
-## 5. Start the frontend
-
-Open another terminal:
-
-```powershell
-cd D:\EcoSched\frontend
+```bash
+cd frontend
 npm install
 ```
+Optional: `cp .env.example .env` and change `VITE_API_BASE_URL` (default `http://localhost:8080/api`).
+The dev server must use port **3000** (already set in `vite.config.js`); this is the origin the backend allows through CORS.
+If you need another origin, add it to `CORS_ALLOWED_ORIGINS` in the root `.env` and restart the backend.
 
-If the `npm` command is broken on your Windows setup but Node.js works, run npm directly using your installed npm CLI. For example:
+## SCHEDULER SETUP
 
-```powershell
-node "D:\VS Code\nodejs\node_modules\npm\bin\npm-cli.js" install
-node "D:\VS Code\nodejs\node_modules\npm\bin\npm-cli.js" run dev
+```bash
+cd scheduler
+make            # builds ./ecosched_scheduler
+make test       # 40 unit tests + 13 CLI tests (no database needed)
+```
+Build it **before** starting the backend. The backend finds `scheduler/ecosched_scheduler` automatically (when started from
+`backend/` or from the project root); set `SCHEDULER_BIN` in `.env` for another path. On Windows with MinGW the file is `ecosched_scheduler.exe`.
+Details: `scheduler/README.md`, `docs/OS_SCHEDULING.md`.
+
+## RUN COMMANDS
+
+Open three terminals, in this order (MySQL must already be running):
+
+```bash
+# 1. scheduler (once)
+cd scheduler && make
+
+# 2. backend  -> http://localhost:8080
+cd backend && mvn spring-boot:run
+
+# 3. frontend -> http://localhost:3000
+cd frontend && npm start
+```
+Quick check: `curl http://localhost:8080/api/teams/available`
+
+Demo (fresh `schema.sql` + `seed.sql`, backend restarted):
+1. Open <http://localhost:3000/scheduler> - queue shows requests 1, 3, 8, 2 (priority 9, 9, 7, 5).
+2. **Run scheduler** - requests 1 and 3 go to the two free teams.
+3. **Run scheduler** again - nothing happens, all teams busy (non-preemptive).
+4. **Complete** on #4 (Active pickups), then **Run scheduler** - the freed team gets request 8 (priority 7), not 2.
+5. <http://localhost:3000/admin> (Dashboard) shows the same numbers computed by MySQL.
+
+## API ENDPOINTS
+
+Base URL `http://localhost:8080/api` (JSON, snake_case). Full examples and error codes: `docs/API.md`.
+
+| Method | Path | Purpose |
+|--------|------|---------|
+| POST / GET | `/users` | register / list users |
+| GET | `/users/{id}` | one user |
+| POST / GET | `/ewaste` | register / list e-waste items |
+| GET | `/ewaste/{id}` | one item |
+| POST / GET | `/requests` | create pickup request / list all |
+| GET | `/requests/pending` | pending requests |
+| GET | `/requests/priority` | pending requests, highest priority first |
+| GET | `/requests/user/{userId}` | request history of a user |
+| GET | `/requests/{id}` | one request |
+| PUT | `/requests/{id}/start` | ASSIGNED -> IN_PROGRESS |
+| PUT | `/requests/{id}/complete` | -> COMPLETED, team -> AVAILABLE (current_task cleared) |
+| PUT | `/requests/{id}/cancel` | -> CANCELLED, releases the team |
+| POST / GET | `/teams` | create / list collection teams |
+| GET | `/teams/available` | available teams |
+| PUT / DELETE | `/teams/{id}` | update / delete a team |
+| POST | `/scheduler/run` | run the C priority scheduler once |
+| GET | `/scheduler/queue` | ready queue in dispatch order |
+| GET | `/scheduler/status` | counts, per-team state, last run, integrity check |
+| GET | `/admin/stats` | dashboard numbers computed by MySQL |
+| GET | `/admin/ewaste-stats` | e-waste totals by category |
+
+## TESTING
+
+Full results and explanations: `docs/TESTING.md`. Viva preparation: `docs/VIVA_QUESTIONS.md`.
+
+```bash
+# C scheduler
+cd scheduler && make test
+
+# Database + OS<->DBMS (these RE-CREATE the database `ecosched`)
+pip install pymysql
+python3 database/scenario_test.py --user root --password YOUR_ROOT_PASSWORD   # 3 users, 5 items, 5 requests, 2 teams
+python3 database/workflow_test.py --user root --password YOUR_ROOT_PASSWORD
+MYSQL_PWD='YOUR_ROOT_PASSWORD' ./database/test_db.sh -u root
+
+# Frontend build
+cd frontend && npm run build
+
+# Spring Boot API (backend running)
+bash backend/scripts/api-smoke-test.sh
+bash backend/scripts/scheduler-test.sh      # needs an EMPTY database: schema.sql only, no seed.sql
 ```
 
-Ensure `frontend/.env` contains:
+Last results: C 40+13 pass, `test_db.sh` 37/37, `workflow_test.py` 32/32, `scenario_test.py` 55/55, frontend build OK.
+Spring Boot layer: not yet run (see `docs/TESTING.md` section 6).
 
-```dotenv
-VITE_API_BASE_URL=http://localhost:8081/api
+## PROJECT STRUCTURE
+
+```
+EcoSched/
+├── backend/                 Spring Boot + Maven + JPA/Hibernate (Java 17+)
+│   ├── pom.xml
+│   ├── scripts/             api-smoke-test.sh, scheduler-test.sh
+│   └── src/main/java/com/syscore/ecosched/
+│       ├── controller/      REST endpoints
+│       ├── service/         business logic, SchedulerService (MySQL <-> C)
+│       ├── scheduler/       SchedulerBridge (starts the C program)
+│       ├── repository/      Spring Data JPA
+│       ├── entity/  dto/  exception/  config/
+├── frontend/                React (Vite): pages, components, api.js
+├── scheduler/               C priority scheduler: library, CLI bridge, tests, Makefile
+├── database/
+│   ├── schema.sql  seed.sql  queries.sql  procedures.sql  scheduler_checks.sql
+│   ├── test_db.sh           constraint + transaction tests
+│   ├── workflow_test.py     OS<->DBMS workflow + concurrency test
+│   └── scenario_test.py     Phase-1 scenario test (5 requests, 2 teams, invalid data)
+├── docs/
+│   ├── PROJECT_ARCHITECTURE.md  DBMS.md  OS_SCHEDULING.md  API.md
+│   ├── TESTING.md  VIVA_QUESTIONS.md
+│   └── test-results/        raw logs of the test runs
+├── .env.example             placeholders only
+├── .gitignore
+└── README.md
 ```
 
-Start Vite:
+## Troubleshooting
 
-```powershell
-npm run dev
-```
+| Problem | Fix |
+|---------|-----|
+| `Could not resolve placeholder 'DB_PASSWORD'` | `.env` is missing or `DB_PASSWORD` is empty |
+| `Access denied for user 'ecosched_user'` | wrong password, or the user was not created |
+| `Unknown database 'ecosched'` | run `schema.sql` first |
+| `Table ... doesn't exist` / unknown column | re-run `schema.sql` then `seed.sql` |
+| Browser: `blocked by CORS policy` | open the app at http://localhost:3000; restart the backend after editing `CORS_ALLOWED_ORIGINS` |
+| `/api/scheduler/*` returns 503 "C scheduler not found" | run `cd scheduler && make`, or set `SCHEDULER_BIN` |
+| Port 8080 busy | set `SERVER_PORT=8081` in `.env` and `VITE_API_BASE_URL` in `frontend/.env` |
+| `release version 17 not supported` | install JDK 17+ and check `java -version` / `mvn -v` |
+| `Port 3000 is already in use` | stop the other app; the frontend must use 3000 |
 
-The Vite development server is configured for port `3000`. Open:
+## Documentation
 
-- Home page: http://localhost:3000/
-- Admin dashboard: http://localhost:3000/admin
-- Scheduler: http://localhost:3000/scheduler
-
-If Vite prints a different URL, use the URL shown in its terminal.
-
-## 6. Basic verification
-
-- Confirm MySQL is running and the `ecosched` database exists.
-- Confirm the backend startup log says it started successfully on the configured port.
-- Open `http://localhost:8081/api/teams/available` to check the API, adjusting the port if your `.env` differs.
-- Open the frontend and test the seven functions.
-- Visit the Scheduler page and run the scheduler. If the API returns an error, check the backend terminal and verify that `SCHEDULER_BIN` points to an existing executable.
-
-## GitHub safety checklist
-
-Before pushing the project:
-
-- **Never commit `.env`** or any real database password, API key, token, or credential.
-- Ensure `.env` is listed in `.gitignore`.
-- Keep only placeholder values in `.env.example`.
-- Do not commit generated files such as `node_modules`, Maven `target`, or compiled `.exe` files unless there is a specific reason to distribute them.
-
-## Project status
-
-This README describes the current project structure and local run workflow. The project should be treated as **in development** until all seven functions have been tested end-to-end on the target machine. Successful frontend rendering alone does not prove that every backend endpoint or the C scheduler integration works correctly.
-
-## Team
-
-**Team SysCore**  
-Project: EcoSched — Smart E-Waste Management and Collection Scheduling System
+- `docs/PROJECT_ARCHITECTURE.md` - layers, design decisions, configuration
+- `docs/DBMS.md` - ER diagram, data dictionary, constraints, indexes, normalization
+- `docs/OS_SCHEDULING.md` - OS theory and how the C scheduler implements it
+- `docs/API.md` - every endpoint with examples and error codes
+- `docs/TESTING.md` - test plan and real results
+- `docs/VIVA_QUESTIONS.md` - beginner-friendly viva questions and answers
+- `scheduler/README.md` - data structures, CLI protocol, build and test
