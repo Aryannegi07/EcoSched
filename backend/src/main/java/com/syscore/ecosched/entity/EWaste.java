@@ -49,6 +49,8 @@ public class EWaste {
 
     @Column(name = "description", length = 255)
     private String description;
+    @Column(name = "image_path", length = 255)
+    private String imagePath;
 
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
@@ -83,6 +85,8 @@ public class EWaste {
 
     public String getDescription() { return description; }
     public void setDescription(String description) { this.description = description; }
+    public String getImagePath() { return imagePath; }
+    public void setImagePath(String imagePath) { this.imagePath = imagePath; }
 
     public LocalDateTime getCreatedAt() { return createdAt; }
     public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }

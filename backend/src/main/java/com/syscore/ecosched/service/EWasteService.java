@@ -45,10 +45,12 @@ public class EWasteService {
     public List<EWasteResponse> getAllItems() {
         return eWasteRepository.findAll().stream().map(EWasteResponse::from).toList();
     }
+    public List<EWasteResponse> getItemsForUser(Long userId) { return eWasteRepository.findByUser_UserId(userId).stream().map(EWasteResponse::from).toList(); }
 
     public EWasteResponse getItemById(Long id) {
         EWaste item = eWasteRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("E-waste item not found with id " + id));
         return EWasteResponse.from(item);
     }
+    @Transactional public void setImage(Long id, String path) { EWaste item=eWasteRepository.findById(id).orElseThrow(); item.setImagePath(path); }
 }

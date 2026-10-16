@@ -24,6 +24,9 @@ public class UserRequest {
     @NotBlank(message = "address is required")
     @Size(max = 255, message = "address must be at most 255 characters")
     private String address;
+    @NotBlank(message = "password is required")
+    @Size(min = 8, max = 72, message = "password must be 8 to 72 characters")
+    private String password;
 
     public String getFullName() { return fullName; }
     public void setFullName(String fullName) { this.fullName = fullName; }
@@ -36,4 +39,6 @@ public class UserRequest {
 
     public String getAddress() { return address; }
     public void setAddress(String address) { this.address = address; }
+    public String getPassword() { return password; }
+    public void setPassword(String password) { this.password = password; }
 }

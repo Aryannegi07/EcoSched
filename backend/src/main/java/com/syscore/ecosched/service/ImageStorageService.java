@@ -1,0 +1,7 @@
+package com.syscore.ecosched.service;
+import org.springframework.beans.factory.annotation.Value; import org.springframework.http.MediaType; import org.springframework.stereotype.Service; import org.springframework.web.multipart.MultipartFile; import java.io.*; import java.nio.file.*; import java.util.*;
+@Service public class ImageStorageService {
+ private final Path root; public ImageStorageService(@Value("${ecosched.upload-dir:uploads}") String dir){root=Paths.get(dir).toAbsolutePath().normalize();try{Files.createDirectories(root);}catch(IOException e){throw new IllegalStateException("Cannot create upload directory",e);}}
+ public String save(MultipartFile f){if(f==null||f.isEmpty())return null;if(f.getSize()>5*1024*1024)throw new IllegalArgumentException("Image must be 5 MB or smaller");String type=f.getContentType();if(!List.of(MediaType.IMAGE_JPEG_VALUE,MediaType.IMAGE_PNG_VALUE,"image/webp").contains(type))throw new IllegalArgumentException("Only JPG, JPEG, PNG, and WebP images are allowed");String ext=type.equals(MediaType.IMAGE_PNG_VALUE)?".png":type.equals("image/webp")?".webp":".jpg";String name=UUID.randomUUID()+ext;try{Files.copy(f.getInputStream(),root.resolve(name),StandardCopyOption.REPLACE_EXISTING);return name;}catch(IOException e){throw new IllegalStateException("Could not store image",e);}}
+ public Path resolve(String name){if(name==null||name.contains("..")||name.contains("/")||name.contains("\\"))throw new IllegalArgumentException("Invalid image path");return root.resolve(name).normalize();}
+}

@@ -7,6 +7,7 @@ import com.syscore.ecosched.exception.ResourceNotFoundException;
 import com.syscore.ecosched.repository.UserRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.security.crypto.password.PasswordEncoder;
 
 import java.util.List;
 
@@ -15,9 +16,11 @@ import java.util.List;
 public class UserService {
 
     private final UserRepository userRepository;
+    private final PasswordEncoder passwordEncoder;
 
-    public UserService(UserRepository userRepository) {
+    public UserService(UserRepository userRepository, PasswordEncoder passwordEncoder) {
         this.userRepository = userRepository;
+        this.passwordEncoder = passwordEncoder;
     }
 
     @Transactional
@@ -33,6 +36,8 @@ public class UserService {
         user.setEmail(email);
         user.setPhone(request.getPhone().trim());
         user.setAddress(request.getAddress().trim());
+        user.setPasswordHash(passwordEncoder.encode(request.getPassword()));
+        user.setRole("USER");
         return userRepository.save(user);
     }
 

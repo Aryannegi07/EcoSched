@@ -45,6 +45,8 @@ CREATE TABLE users (
     email       VARCHAR(150)  NOT NULL,
     phone       VARCHAR(15)   NOT NULL,
     address     VARCHAR(255)  NOT NULL,
+    password_hash VARCHAR(100) NULL,
+    role        VARCHAR(10)   NOT NULL DEFAULT 'USER',
     created_at  DATETIME      NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
     CONSTRAINT pk_users        PRIMARY KEY (user_id),
@@ -66,6 +68,7 @@ CREATE TABLE e_waste (
     quantity        INT            NOT NULL DEFAULT 1,
     weight_kg       DECIMAL(8,2)   NOT NULL,
     description     VARCHAR(255)   NULL,
+    image_path      VARCHAR(255)   NULL,
     created_at      DATETIME       NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
     CONSTRAINT pk_e_waste PRIMARY KEY (item_id),

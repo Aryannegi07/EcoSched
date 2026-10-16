@@ -8,6 +8,7 @@ import java.math.BigDecimal;
 import java.util.List;
 
 public interface EWasteRepository extends JpaRepository<EWaste, Long> {
+    List<EWaste> findByUser_UserId(Long userId);
 
     /** SUM(weight_kg) over all items (null when the table is empty). */
     @Query("select sum(e.weightKg) from EWaste e")

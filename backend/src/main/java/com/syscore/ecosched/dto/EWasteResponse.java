@@ -18,6 +18,7 @@ public class EWasteResponse {
     private Integer quantity;
     private BigDecimal weightKg;
     private String description;
+    private String imagePath;
     private LocalDateTime createdAt;
 
     public static EWasteResponse from(EWaste e) {
@@ -30,6 +31,7 @@ public class EWasteResponse {
         r.quantity = e.getQuantity();
         r.weightKg = e.getWeightKg();
         r.description = e.getDescription();
+        r.imagePath = e.getImagePath();
         r.createdAt = e.getCreatedAt();
         return r;
     }
@@ -42,5 +44,6 @@ public class EWasteResponse {
     public Integer getQuantity() { return quantity; }
     public BigDecimal getWeightKg() { return weightKg; }
     public String getDescription() { return description; }
+    public String getImagePath() { return imagePath; }
     public LocalDateTime getCreatedAt() { return createdAt; }
 }
